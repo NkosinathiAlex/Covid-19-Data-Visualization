@@ -83,7 +83,7 @@ date, SUM(CAST(new_cases as float)) AS total_cases,
 SUM(CAST(new_deaths as float))  AS total_deaths, 
 CASE WHEN SUM(CAST(new_cases AS float))>0
      THEN (SUM(CAST(new_deaths AS float)) / SUM(CAST(new_cases As float))) * 100
-	 ELSE NULL
+	 ELSE 0
 END AS DeathPercentage
 FROM
 PortfolioPoject..CovidDeaths
@@ -92,27 +92,70 @@ Group by date
 order by 1,2;
 
 --Total Cases vs Total Deaths
+with total(total_cases, total_deaths) as
+(
 SELECT 
  SUM(CAST(new_cases as float)) AS total_cases, 
-SUM(CAST(new_deaths as float))  AS total_deaths, 
-CASE WHEN SUM(CAST(new_cases AS float))>0
-     THEN (SUM(CAST(new_deaths AS float)) / SUM(CAST(new_cases As float))) * 100
-	 ELSE NULL
-END AS DeathPercentage
+SUM(CAST(new_deaths as float))  AS total_deaths
 FROM
 PortfolioPoject..CovidDeaths
-where continent is not null
-order by 1,2;
+where continent is not null)
+select total_cases, total_deaths, total_deaths/total_cases * 100 as DeathPercentage
+from total;
 
 --Looking at Total Population vs Vaccination
-SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
- SUM(CAST(vac.new_vaccinations AS Float)) OVER (PARTITION by dea.location order by dea.location, dea.date)
-FROM PortfolioPoject..CovidDeaths dea
-Join PortfolioPoject..CovidVaccinations vac
+with PopvsVac(Continent, Location, Date, Population, New_Vaccinations, RollingPeopleVaccinated) as
+(
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(cast(vac.new_vaccinations as bigint)) OVER (partition by dea.location  order by dea.location, dea.Date) as RollingPeopleVaccinated
+from PortfolioPoject..CovidDeaths dea
+join PortfolioPoject..CovidVaccinations vac
 on dea.location = vac.location
 and dea.date = vac.date
-WHERE dea.continent is not null
-order by 1,2,3 ;
+where dea.continent is not null )
+select *, (RollingPeopleVaccinated /Population) * 100 from PopvsVac
+
+
+
+--TEMP Table 
+CREATE TABLE #PercentPopulationVaccinated
+( continent nvarchar(255),
+Location nvarchar(255),
+Date datetime,
+Population numeric,
+New_vaccinations numeric,
+RollingPeopleVaccinated numeric
+)
+
+INSERT INTO  #PercentPopulationVaccinated
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(cast(vac.new_vaccinations as bigint)) OVER (partition by dea.location  order by dea.location, dea.Date) as RollingPeopleVaccinated
+from PortfolioPoject..CovidDeaths dea
+join PortfolioPoject..CovidVaccinations vac
+on dea.location = vac.location
+and dea.date = vac.date
+where dea.continent is not null;
+
+select * from #PercentPopulationVaccinated;
+
+--Creating a View to store data for later visalation
+
+Create View  PercentPopulationVaccinated as
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(cast(vac.new_vaccinations as bigint)) OVER (partition by dea.location  order by dea.location, dea.Date) as RollingPeopleVaccinated
+from PortfolioPoject..CovidDeaths dea
+join PortfolioPoject..CovidVaccinations vac
+on dea.location = vac.location
+and dea.date = vac.date
+where dea.continent is not null;
+
+select * from PercentPopulationVaccinated;
+
+
+
+
+
+
 
 
 
