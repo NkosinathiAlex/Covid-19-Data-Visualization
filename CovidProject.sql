@@ -4,7 +4,9 @@
 --Selecting all the columns from the CovidDeaths Tables
 SELECT *
 FROM 
-PortfolioPoject..CovidDeaths;
+PortfolioPoject..CovidDeaths
+where continent is not  null 
+order by continent ASC;
 
 
 --Selecting all the columns from the CovidVaccinations Tables
@@ -19,47 +21,19 @@ location, date, total_cases, new_cases, total_deaths, population
 FROM 
 PortfolioPoject..CovidDeaths;
 
--- A query for Total Cases vs Total Deaths in South Africa
---Shows the likelihood of dying if you are in South Africa
-SELECT
-location, date, total_cases, new_cases, total_deaths, cast(total_deaths as Float) / cast(total_cases as float) * 100 AS DeathPercentage
-FROM 
-PortfolioPoject..CovidDeaths
-WHERE
-location = 'South Africa';
-
--- A query that Select the date that had highest new cases identified in South Africa
-SELECT TOP 1 
-date, new_cases
-FROM 
-PortfolioPoject..CovidDeaths
-WHERE
-location = 'South Africa'
-ORDER BY 
-new_cases  DESC;
-
-
---A query for Total Cases vs Population
---Show what percentage got covid
-SELECT 
-location, date, total_cases, population, cast(total_cases as Float) / cast(population as float) * 100 AS populationPercentage
-FROM 
-PortfolioPoject..CovidDeaths
-WHERE
-location = 'South Africa';
-
 
 --Looking at countries with Highest Infection Rate compared to pouplation
 SELECT
-location, population, sum(cast( new_cases as float)) as HighestInfenctionCount, Max((total_cases/population))*100 as populationInfected
+location, population, MAX(cast( total_cases as float)) as HighestInfenctionCount, Max((total_cases/population))*100 as populationInfected
 FROM
-PortfolioPoject..CovidDeaths
+PortfolioPoject..CovidDeaths 
+where continent is not null
 Group by location, population
 order by populationInfected DESC;
 
 --Showing Countries with the Highest Death count per Population
 SELECT
-location, population, sum(cast( new_deaths as float)) Total_Deaths, Max((total_deaths/population))*100 as TotalDeathCountPercentage
+location, population, sum(cast( new_deaths as float)) Total_Deaths, Max(total_deaths)/population *100 as TotalDeathCountPercentage
 FROM
 PortfolioPoject..CovidDeaths
 WHERE
@@ -69,11 +43,12 @@ order by TotalDeathCountPercentage dESC;
 
 --Selecting continents with the highest death count
 SELECT 
-location, Max(cast(total_deaths as int)) as TotalDeathCount
+continent, Max(cast(total_deaths as int)) as TotalDeathCount
 FROM
 PortfolioPoject..CovidDeaths
-WHERE continent is null AND location NOT  LIKE '%income%'
-Group by location
+WHERE continent is  not null and
+location not in('World', 'European Union') and location not like('%income%')
+Group by continent
 order by TotalDeathCount desc;
 
 --Global Numbers 
@@ -91,6 +66,8 @@ where continent is not null
 Group by date
 order by 1,2;
 
+
+
 --Total Cases vs Total Deaths
 with total(total_cases, total_deaths) as
 (
@@ -102,6 +79,7 @@ PortfolioPoject..CovidDeaths
 where continent is not null)
 select total_cases, total_deaths, total_deaths/total_cases * 100 as DeathPercentage
 from total;
+
 
 --Looking at Total Population vs Vaccination
 with PopvsVac(Continent, Location, Date, Population, New_Vaccinations, RollingPeopleVaccinated) as
